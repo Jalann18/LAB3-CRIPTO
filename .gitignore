@@ -1,5 +1,6 @@
-﻿__pycache__/
+__pycache__/
 *.pyc
 users.json
 .env
 venv/
+informe_laboratorio.tex
