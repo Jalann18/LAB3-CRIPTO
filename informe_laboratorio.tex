@@ -1,0 +1,167 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{tcolorbox}
+
+% Configuracion de margenes
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Configuracion de codigo
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge\bfseries Informe de Laboratorio 3\par}
+    \vspace{1cm}
+    {\Large\bfseries Vulnerabilidades de Hashing y Pass-the-Hash\par}
+    \vspace{1.5cm}
+    
+    {\large Curso: Ciberseguridad y Criptografía\par}
+    \vspace{2cm}
+    
+    {\large \textbf{Autor:} [Tu Nombre]\par}
+    {\large \textbf{Fecha:} \today\par}
+    
+    \vfill
+    
+    % Placeholder para logo universidad
+    % \includegraphics[width=0.3\textwidth]{logo_universidad.png}
+    
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Introducción}
+El presente informe documenta la realización del Laboratorio 3, enfocado en el análisis de vulnerabilidades relacionadas con el almacenamiento y transmisión de contraseñas. Se utiliza un entorno web vulnerable controlado para demostrar debilidades criptográficas en el uso de algoritmos obsoletos como MD5 y fallos lógicos en la arquitectura de autenticación (hashing del lado del cliente).
+
+\section{Objetivos del Laboratorio}
+\begin{itemize}
+    \item Identificar el algoritmo de hashing utilizado en la plataforma mediante análisis de longitud y formato.
+    \item Interceptar y analizar el tráfico de autenticación entre el cliente y el servidor.
+    \item Ejecutar con éxito un ataque \textit{Pass-the-Hash} para evadir la autenticación.
+    \item Proponer mitigaciones y arquitecturas seguras para el almacenamiento de contraseñas.
+\end{itemize}
+
+\section{Desarrollo Experimental}
+
+\subsection{Análisis del Proceso de Registro}
+Al registrar un nuevo usuario en la plataforma, se analizó el comportamiento del navegador y el tráfico enviado al servidor.
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Observación]
+Se detectó que la aplicación no envía la contraseña en texto plano. En su lugar, el navegador ejecuta una función JavaScript que calcula un hash y envía este valor en el cuerpo JSON de la petición HTTP POST al endpoint \texttt{/api/register}.
+\end{tcolorbox}
+
+% PLACEHOLDER IMAGEN 1
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.85\textwidth]{01_registro_hash_cliente.png}
+    \framebox[12cm][c]{\parbox{10cm}{\centering \vspace{2cm} [FOTO 1: Captura del formulario de registro mostrando el hash MD5 generado en tiempo real] \vspace{2cm}}}
+    \caption{Generación de hash del lado del cliente durante el registro.}
+\end{figure}
+
+\subsection{Identificación del Algoritmo Criptográfico}
+El valor interceptado presenta una longitud de 32 caracteres hexadecimales, lo que corresponde a 128 bits. Esto es característico del algoritmo de condensación \textbf{MD5}. Además, la aplicación web filtra explícitamente el uso de este algoritmo en su interfaz.
+
+\subsection{Ataque de Reutilización de Hash (Auth Bypass / Pass-the-Hash Web)}
+El ataque principal consistió en explotar la vulnerabilidad de diseño donde el servidor confía ciegamente en el hash recibido y lo compara directamente con el almacenado. Aunque en redes corporativas (NTLM/Active Directory) este ataque se denomina estrictamente \textit{Pass-the-Hash}, en aplicaciones web su terminología técnica más precisa es \textbf{Bypass de Autenticación por Reutilización de Hash del Cliente}.
+
+\subsubsection{Captura de Credenciales}
+Primero, se identificó un hash válido perteneciente al usuario \texttt{admin} (hash: \texttt{482c811da5d5b4bc6d497ffa98491e38}). 
+
+\subsubsection{Interceptación y Modificación (Burp Suite)}
+Se configuró Burp Suite como proxy HTTP. Se intentó iniciar sesión con una contraseña incorrecta y se interceptó la petición.
+
+\begin{lstlisting}[language=json, caption=Petición Original Interceptada]
+POST /api/login HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password_hash": "64c8d55de068159b3bb87f4c0dfad7a1" // Hash incorrecto
+}
+\end{lstlisting}
+
+Se procedió a reemplazar el campo \texttt{password\_hash} por el hash válido del administrador obtenido previamente.
+
+% PLACEHOLDER IMAGEN 2
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.85\textwidth]{04_burp_intercept_original.png}
+    \framebox[12cm][c]{\parbox{10cm}{\centering \vspace{2cm} [FOTO 2: Captura de Burp Suite Repeater/Proxy mostrando el request modificado] \vspace{2cm}}}
+    \caption{Modificación del payload en Burp Suite (Pass-the-Hash).}
+\end{figure}
+
+\subsubsection{Acceso Exitoso}
+Al liberar la petición modificada (\textit{Forward}), el servidor respondió con un código HTTP 200 OK, otorgando acceso completo al panel de control (Dashboard) sin que se conociera en ningún momento la contraseña original del administrador.
+
+% PLACEHOLDER IMAGEN 3
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.85\textwidth]{06_dashboard_acceso_admin.png}
+    \framebox[12cm][c]{\parbox{10cm}{\centering \vspace{2cm} [FOTO 3: Captura del Dashboard post-login mostrando "Acceso Concedido" como admin] \vspace{2cm}}}
+    \caption{Acceso evadido exitosamente al Dashboard.}
+\end{figure}
+
+
+\section{Conclusiones de Seguridad}
+
+El laboratorio demostró de forma práctica tres fallas críticas en el diseño de autenticación:
+
+\begin{enumerate}
+    \item \textbf{Uso de MD5:} MD5 es un algoritmo obsoleto vulnerable a ataques de colisión y fuerza bruta. Con hardware moderno (GPUs), es posible calcular miles de millones de hashes por segundo.
+    \item \textbf{Hashing del Lado del Cliente (Auth Bypass):} Realizar el hashing en el navegador anula el propósito del algoritmo. Si el servidor solo requiere el hash para autenticar, entonces el hash se convierte funcionalmente en la contraseña en sí (\textit{Reutilización de Hash}). Esto viola los principios de autenticación de conocimiento cero.
+    \item \textbf{Falta de Salting:} Almacenar los hashes sin un \textit{salt} único y aleatorio por usuario permite el uso de \textit{Rainbow Tables} (tablas precomputadas) y evidencia si dos usuarios tienen la misma contraseña.
+\end{enumerate}
+
+\subsection{Incumplimiento de Políticas de Seguridad}
+Durante la auditoría al endpoint \texttt{/policies}, se evidenció que la plataforma viola sus propias normativas corporativas:
+\begin{itemize}
+    \item \textbf{REQ-1.1 / REQ-1.2:} No valida longitud ni complejidad, procesando contraseñas vacías mediante su hash MD5.
+    \item \textbf{REQ-3.1 / REQ-3.2:} Permite la autenticación usando un token computable públicamente en lugar del secreto original (contraseña), operando sobre HTTP plano.
+    \item \textbf{REQ-4.1:} Exposición injustificada de la base de datos de hashes mediante el endpoint \texttt{/api/users}.
+\end{itemize}
+
+\subsection{Recomendaciones de Mitigación}
+Para securizar este sistema, se debe reestructurar el flujo de la siguiente manera:
+\begin{itemize}
+    \item El cliente debe enviar la contraseña en texto plano, pero proteger el canal de transmisión utilizando \textbf{HTTPS/TLS}.
+    \item El hashing debe realizarse exclusivamente en el lado del servidor.
+    \item Se debe reemplazar MD5 por funciones de derivación de claves diseñadas específicamente para contraseñas, tales como \textbf{bcrypt, Argon2, o scrypt}, las cuales integran \textit{salting} automático y son computacionalmente costosas (protección contra fuerza bruta).
+\end{itemize}
+
+\end{document}
