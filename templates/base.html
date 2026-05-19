@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!--
+  LAB3 CRIPTO - Template Base
+  Laboratorio Educativo de Ciberseguridad
+  Tema: Dark Cyberpunk/Terminal
+-->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LAB3 CRIPTO{% endblock %} | Laboratorio de Hashing</title>
+    <meta name="description" content="Laboratorio educativo de ciberseguridad - Hashing y Pass-the-Hash">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Fondo animado de partículas/código -->
+    <div class="bg-grid"></div>
+    
+    <!-- Header -->
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-bracket">[</span>
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">LAB3<span class="logo-accent">CRIPTO</span></span>
+                <span class="logo-bracket">]</span>
+            </div>
+            <nav class="nav-links">
+                <a href="/" class="nav-link">Inicio</a>
+                <a href="/policies" class="nav-link">Políticas</a>
+                <a href="/login" class="nav-link">Login</a>
+                <a href="/register" class="nav-link">Registro</a>
+                <a href="/api/users" class="nav-link nav-danger" target="_blank" title="⚠️ Endpoint inseguro - expone hashes">
+                    DB Leak
+                </a>
+            </nav>
+            <div class="header-badge">
+                <span class="badge-dot"></span>
+                <span>MODO EDUCATIVO</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Barra de advertencia educativa -->
+    <div class="warning-banner">
+        <span class="warning-icon">⚠️</span>
+        <span><strong>ENTORNO DE LABORATORIO:</strong> Este sitio es intencionalmente vulnerable. Uso exclusivo educativo en redes controladas.</span>
+        <span class="warning-icon">⚠️</span>
+    </div>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-col">
+                <span class="mono">$ cat /etc/vulnerabilities</span>
+                <ul class="vuln-list">
+                    <li>❌ MD5 sin salt</li>
+                    <li>❌ Hash enviado en cliente</li>
+                    <li>❌ Pass-the-Hash posible</li>
+                    <li>❌ Sin CSRF protection</li>
+                    <li>❌ User enumeration</li>
+                </ul>
+            </div>
+            <div class="footer-col footer-center">
+                <p class="footer-title">LAB3 CRIPTO</p>
+                <p class="footer-sub">Laboratorio de Ciberseguridad Universitario</p>
+                <p class="footer-sub mono">Solo para uso educativo</p>
+            </div>
+            <div class="footer-col footer-right">
+                <span class="mono">$ curl endpoints</span>
+                <ul class="endpoint-list">
+                    <li><code>POST /api/register</code></li>
+                    <li><code>POST /api/login</code></li>
+                    <li><code>GET  /api/users</code></li>
+                    <li><code>POST /api/hash</code></li>
+                    <li><code>POST /api/logout</code></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span class="mono">LAB3-CRIPTO v1.0 | MD5 Hash Demo | Educational Use Only</span>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

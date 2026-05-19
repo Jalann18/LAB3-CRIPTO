@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+
+        <!-- Panel izquierdo: Info del ataque -->
+        <div class="auth-info-panel">
+            <div class="info-panel-header">
+                <span class="mono">// ANÁLISIS DE TRÁFICO</span>
+            </div>
+            
+            <div class="attack-demo-box">
+                <h3 class="demo-title">🎯 Pass-the-Hash / Auth Bypass Demo</h3>
+                <p class="demo-desc">Lo que el servidor <strong>realmente recibe</strong> cuando haces login (Reutilización de Hash):</p>
+                
+                <div class="http-request-box">
+                    <div class="http-method">POST /api/login HTTP/1.1</div>
+                    <div class="http-header">Host: 127.0.0.1:5000</div>
+                    <div class="http-header">Content-Type: application/json</div>
+                    <div class="http-blank"></div>
+                    <div class="http-body">{</div>
+                    <div class="http-body">&nbsp;&nbsp;"username": <span class="http-string">"admin"</span>,</div>
+                    <div class="http-body">&nbsp;&nbsp;"password_hash": <span class="http-hash" id="live-hash-display">"482c811da5d5b4bc6d497ffa98491e38"</span></div>
+                    <div class="http-body">}</div>
+                </div>
+                
+                <div class="attack-arrow">↓ ATAQUE: Reemplaza este hash en Burp Suite ↓</div>
+                
+                <div class="attack-steps">
+                    <div class="attack-step">
+                        <span class="step-num">1</span>
+                        <span>Intercepta esta petición en Burp Suite</span>
+                    </div>
+                    <div class="attack-step">
+                        <span class="step-num">2</span>
+                        <span>Modifica <code>password_hash</code></span>
+                    </div>
+                    <div class="attack-step">
+                        <span class="step-num">3</span>
+                        <span>Reemplaza por el hash correcto</span>
+                    </div>
+                    <div class="attack-step">
+                        <span class="step-num">4</span>
+                        <span>Forward → ¡Login exitoso!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hashes de prueba -->
+            <div class="quick-hashes">
+                <h4 class="mono">// Hashes para Pass-the-Hash:</h4>
+                <div class="quick-hash-item">
+                    <span class="qh-user">admin</span>
+                    <span class="qh-hash mono" id="qh-admin">482c811da5d5b4bc6d497ffa98491e38</span>
+                    <button class="btn-copy-small" onclick="copyText('482c811da5d5b4bc6d497ffa98491e38')">📋</button>
+                </div>
+                <div class="quick-hash-item">
+                    <span class="qh-user">alice</span>
+                    <span class="qh-hash mono" id="qh-alice">calculando...</span>
+                    <button class="btn-copy-small" onclick="copyText(document.getElementById('qh-alice').textContent)">📋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Formulario de login -->
+        <div class="auth-form-panel">
+            <div class="form-header">
+                <div class="form-icon">🔐</div>
+                <h2 class="form-title">Iniciar Sesión</h2>
+                <p class="form-subtitle">El hash MD5 se genera automáticamente en tu navegador</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error" id="server-error">
+                <span>❌</span> {{ error }}
+            </div>
+            {% endif %}
+
+            <form id="login-form" class="auth-form" novalidate>
+                <div class="form-group">
+                    <label for="login-username" class="form-label">
+                        Usuario
+                    </label>
+                    <input 
+                        type="text" 
+                        id="login-username" 
+                        name="username"
+                        class="form-input" 
+                        placeholder="admin"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password" class="form-label">
+                        Contraseña
+                        <span class="label-hint">(se convertirá a MD5 antes de enviar)</span>
+                    </label>
+                    <div class="input-with-toggle">
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            name="password"
+                            class="form-input" 
+                            placeholder="password123"
+                            autocomplete="off"
+                            required
+                        >
+                        <button type="button" class="toggle-pass" onclick="togglePassword('login-password', this)">👁</button>
+                    </div>
+                </div>
+
+                <!-- Visor del hash en tiempo real -->
+                <div class="hash-preview-box" id="hash-preview-box">
+                    <div class="hash-preview-label">
+                        <span class="mono">MD5 que se enviará al servidor:</span>
+                        <span class="badge-live">LIVE</span>
+                    </div>
+                    <div class="hash-preview-value mono" id="login-hash-preview">
+                        (escribe tu contraseña para ver el hash)
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="btn-login">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <span class="btn-loading hidden">⟳ Autenticando...</span>
+                </button>
+            </form>
+
+            <!-- Respuesta del servidor (visible para lab) -->
+            <div class="server-response hidden" id="login-response">
+                <div class="response-label mono">// Respuesta del servidor:</div>
+                <pre class="response-body" id="login-response-body"></pre>
+            </div>
+
+            <!-- Request HTTP que se envió (visible para lab) -->
+            <div class="request-display hidden" id="login-request-display">
+                <div class="request-label mono">// Request HTTP enviado:</div>
+                <pre class="request-body" id="login-request-body"></pre>
+            </div>
+
+            <div class="form-footer">
+                <a href="/register" class="form-link">¿No tienes cuenta? Regístrate</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Mostrar hash en tiempo real mientras el usuario escribe
+    document.getElementById('login-password').addEventListener('input', function() {
+        const password = this.value;
+        const preview = document.getElementById('login-hash-preview');
+        const liveDisplay = document.getElementById('live-hash-display');
+        
+        if (password.length === 0) {
+            preview.textContent = '(escribe tu contraseña para ver el hash)';
+            preview.classList.remove('hash-ready');
+            return;
+        }
+        
+        // Calcular MD5 en tiempo real (lado cliente - VULNERABILIDAD DEMOSTRADA)
+        md5(password).then(hash => {
+            preview.textContent = hash;
+            preview.classList.add('hash-ready');
+            liveDisplay.textContent = `"${hash}"`;
+        });
+    });
+
+    // Calcular hash de alice al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        md5("alice2024").then(h => {
+            document.getElementById('qh-alice').textContent = h;
+        });
+    });
+
+    // Manejar submit del formulario de login
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        
+        if (!username || !password) {
+            showAlert('Por favor completa todos los campos', 'error');
+            return;
+        }
+
+        // ============================================================
+        // AQUÍ OCURRE LA VULNERABILIDAD:
+        // La contraseña se convierte a MD5 en el cliente
+        // y se envía el HASH (no la contraseña) al servidor.
+        // Un atacante que conoce el hash puede reutilizarlo directamente.
+        // ============================================================
+        const passwordHash = await md5(password);
+        
+        const requestData = {
+            username: username,
+            password_hash: passwordHash  // Se envía el hash, NO la contraseña
+        };
+
+        // Mostrar request que se va a enviar
+        document.getElementById('login-request-display').classList.remove('hidden');
+        document.getElementById('login-request-body').textContent = 
+            `POST /api/login HTTP/1.1\n` +
+            `Host: 127.0.0.1:5000\n` +
+            `Content-Type: application/json\n\n` +
+            JSON.stringify(requestData, null, 2);
+
+        setBtnLoading('btn-login', true);
+        
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            // Mostrar respuesta del servidor
+            document.getElementById('login-response').classList.remove('hidden');
+            document.getElementById('login-response-body').textContent = JSON.stringify(data, null, 2);
+            
+            if (data.success) {
+                showAlert(`✅ ${data.message} — Redirigiendo...`, 'success');
+                setTimeout(() => { window.location.href = data.redirect; }, 1500);
+            } else {
+                showAlert(`❌ ${data.error}`, 'error');
+            }
+        } catch (err) {
+            showAlert('Error de conexión: ' + err.message, 'error');
+        } finally {
+            setBtnLoading('btn-login', false);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <!-- Terminal animado -->
+    <div class="terminal-window">
+        <div class="terminal-bar">
+            <span class="t-btn t-red"></span>
+            <span class="t-btn t-yellow"></span>
+            <span class="t-btn t-green"></span>
+            <span class="t-title">bash — lab3cripto@localhost</span>
+        </div>
+        <div class="terminal-body" id="terminal-output">
+            <div class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">./lab3cripto.sh --start</span></div>
+            <div class="t-line t-delay-1"><span class="t-comment"># Iniciando laboratorio de hashing...</span></div>
+            <div class="t-line t-delay-2"><span class="t-prompt">$</span> <span class="t-cmd">python -c "import hashlib; print(hashlib.md5(b'password123').hexdigest())"</span></div>
+            <div class="t-line t-delay-3 t-output">482c811da5d5b4bc6d497ffa98491e38</div>
+            <div class="t-line t-delay-4"><span class="t-comment"># ↑ Hash MD5 de 'password123' — ¡Prueba Pass-the-Hash!</span></div>
+            <div class="t-line t-delay-5"><span class="t-prompt">$</span> <span class="t-cmd">curl -X POST /api/login -d '{"username":"admin","password_hash":"482c811da5d5b4bc6d497ffa98491e38"}'</span></div>
+            <div class="t-line t-delay-6 t-success">{"success": true, "message": "¡Bienvenido, admin!"}</div>
+            <div class="t-line t-delay-7"><span class="t-cursor">█</span></div>
+        </div>
+    </div>
+
+    <!-- Título principal -->
+    <div class="hero-text">
+        <div class="hero-tag mono">// LAB3 · CRIPTOGRAFÍA Y SEGURIDAD</div>
+        <h1 class="hero-title">
+            <span class="title-line">Laboratorio de</span>
+            <span class="title-highlight">Password Hashing</span>
+            <span class="title-line">& Pass-the-Hash</span>
+        </h1>
+        <p class="hero-desc">
+            Sitio web <strong>intencionalmente vulnerable</strong> para demostrar 
+            ataques de Pass-the-Hash, debilidades de MD5/SHA1 y malas prácticas 
+            de autenticación web.
+        </p>
+        <div class="hero-actions">
+            <a href="/register" class="btn btn-primary" id="btn-start-register">
+                <span>Registrarse</span>
+                <span class="btn-icon">→</span>
+            </a>
+            <a href="/login" class="btn btn-secondary" id="btn-start-login">
+                <span>Iniciar Sesión</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Sección: Flujo del laboratorio -->
+<section class="lab-flow-section">
+    <h2 class="section-title">
+        <span class="mono">// </span>Flujo del Laboratorio
+    </h2>
+    <div class="flow-grid">
+        <div class="flow-card" id="flow-1">
+            <div class="flow-num">01</div>
+            <div class="flow-icon">📝</div>
+            <h3>Registro</h3>
+            <p>Observa cómo la contraseña se convierte a MD5 <strong>en el navegador</strong> antes de enviarse al servidor.</p>
+            <code class="flow-code">MD5("mipass") → a1b2c3...</code>
+        </div>
+        <div class="flow-card" id="flow-2">
+            <div class="flow-num">02</div>
+            <div class="flow-icon">🔍</div>
+            <h3>Interceptar</h3>
+            <p>Usa <strong>Burp Suite</strong> para capturar la petición y observar el hash MD5 en el cuerpo JSON.</p>
+            <code class="flow-code">POST /api/login → {hash}</code>
+        </div>
+        <div class="flow-card" id="flow-3">
+            <div class="flow-num">03</div>
+            <div class="flow-icon">🔓</div>
+            <h3>Pass-the-Hash</h3>
+            <p>Reemplaza la contraseña incorrecta por el hash correcto. ¡El servidor autentica sin conocer el password!</p>
+            <code class="flow-code">wrong → 482c811da5d5...</code>
+        </div>
+        <div class="flow-card" id="flow-4">
+            <div class="flow-num">04</div>
+            <div class="flow-icon">📊</div>
+            <h3>Analizar</h3>
+            <p>Compara MD5, SHA1 y SHA256. Entiende por qué bcrypt/Argon2 son superiores para almacenamiento.</p>
+            <code class="flow-code">MD5 ≠ bcrypt</code>
+        </div>
+    </div>
+</section>
+
+<!-- Sección: Hash Calculator (interactivo) -->
+<section class="hash-calc-section">
+    <h2 class="section-title">
+        <span class="mono">// </span>Calculadora de Hashes
+        <span class="badge-warning">Demo interactiva</span>
+    </h2>
+    <div class="calc-container">
+        <div class="calc-input-group">
+            <label for="calc-input" class="calc-label">Ingresa un texto para hashear:</label>
+            <div class="calc-input-row">
+                <input type="text" id="calc-input" class="calc-input" 
+                       placeholder="Ej: password123" 
+                       value="password123"
+                       autocomplete="off">
+                <button class="btn btn-accent" id="btn-calc-hash" onclick="calculateHashes()">
+                    Calcular
+                </button>
+            </div>
+        </div>
+        <div class="calc-results" id="calc-results">
+            <div class="hash-row">
+                <span class="hash-algo hash-md5">MD5</span>
+                <span class="hash-value mono" id="result-md5">-</span>
+                <button class="btn-copy" onclick="copyHash('result-md5')" title="Copiar">📋</button>
+            </div>
+            <div class="hash-row">
+                <span class="hash-algo hash-sha1">SHA1</span>
+                <span class="hash-value mono" id="result-sha1">-</span>
+                <button class="btn-copy" onclick="copyHash('result-sha1')" title="Copiar">📋</button>
+            </div>
+            <div class="hash-row">
+                <span class="hash-algo hash-sha256">SHA256</span>
+                <span class="hash-value mono" id="result-sha256">-</span>
+                <button class="btn-copy" onclick="copyHash('result-sha256')" title="Copiar">📋</button>
+            </div>
+        </div>
+        <div class="calc-note">
+            <span class="note-icon">💡</span>
+            <span>Este mismo cálculo ocurre en el formulario de login/registro antes de enviar la petición al servidor.</span>
+        </div>
+    </div>
+</section>
+
+<!-- Sección: Vulnerabilidades -->
+<section class="vulns-section">
+    <h2 class="section-title">
+        <span class="mono">// </span>Vulnerabilidades Implementadas
+        <span class="badge-danger">Intencionales</span>
+    </h2>
+    <div class="vulns-grid">
+        <div class="vuln-card vuln-critical">
+            <div class="vuln-severity">CRÍTICO</div>
+            <h3>Auth Bypass (Pass-the-Hash)</h3>
+            <p>El servidor acepta el hash MD5 directamente como credencial. Un atacante que capture el hash puede autenticarse sin conocer la contraseña (Reutilización de Hash).</p>
+        </div>
+        <div class="vuln-card vuln-high">
+            <div class="vuln-severity">ALTO</div>
+            <h3>MD5 Sin Salt</h3>
+            <p>MD5 es vulnerable a ataques de diccionario y rainbow tables. Sin salt, dos usuarios con el mismo password tienen el mismo hash.</p>
+        </div>
+        <div class="vuln-card vuln-high">
+            <div class="vuln-severity">ALTO</div>
+            <h3>Hash en Cliente</h3>
+            <p>El hash se genera en JavaScript (lado cliente), visible en el código fuente. Un atacante puede modificarlo antes de enviarlo.</p>
+        </div>
+        <div class="vuln-card vuln-medium">
+            <div class="vuln-severity">MEDIO</div>
+            <h3>User Enumeration</h3>
+            <p>Mensajes de error diferentes para "usuario no existe" vs "contraseña incorrecta" permiten enumerar usuarios válidos.</p>
+        </div>
+        <div class="vuln-card vuln-medium">
+            <div class="vuln-severity">MEDIO</div>
+            <h3>Sin CSRF Protection</h3>
+            <p>No hay tokens CSRF en los formularios. Un sitio malicioso podría hacer peticiones en nombre del usuario.</p>
+        </div>
+        <div class="vuln-card vuln-low">
+            <div class="vuln-severity">INFO</div>
+            <h3>DB Leak Endpoint</h3>
+            <p>El endpoint /api/users expone todos los usuarios y sus hashes sin autenticación. (Intencional para el lab)</p>
+        </div>
+    </div>
+</section>
+
+<!-- Credenciales de prueba -->
+<section class="credentials-section">
+    <h2 class="section-title">
+        <span class="mono">// </span>Credenciales de Prueba
+    </h2>
+    <div class="creds-table-container">
+        <table class="creds-table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Contraseña</th>
+                    <th>Hash MD5</th>
+                    <th>Rol</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="mono">admin</td>
+                    <td class="mono">password123</td>
+                    <td class="mono hash-display">482c811da5d5b4bc6d497ffa98491e38</td>
+                    <td><span class="role-badge role-admin">admin</span></td>
+                </tr>
+                <tr>
+                    <td class="mono">alice</td>
+                    <td class="mono">alice2024</td>
+                    <td class="mono hash-display" id="alice-hash">calculando...</td>
+                    <td><span class="role-badge role-user">user</span></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="creds-note">
+            <span>⚠️</span> Estos hashes son los que debes usar en el ataque Pass-the-Hash. Cópialos directamente en Burp Suite.
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Calcular hash de alice al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        md5("alice2024").then(h => {
+            document.getElementById('alice-hash').textContent = h;
+        });
+        // Calcular hashes iniciales
+        calculateHashes();
+    });
+</script>
+{% endblock %}

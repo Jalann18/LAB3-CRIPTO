@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Políticas de Seguridad{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="dashboard-header">
+        <div class="dash-welcome">
+            <div class="dash-icon">🛡️</div>
+            <div>
+                <h1 class="dash-title">Políticas de Seguridad Corporativa</h1>
+                <p class="dash-subtitle">Normativas de gestión de contraseñas y accesos (Versión 2.0)</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-alert info-alert-warning" style="margin-bottom: 2rem;">
+        <h4>⚠️ Nota de Laboratorio</h4>
+        <p>Esta página simula la política de seguridad oficial de la organización. Tu objetivo como estudiante es <strong>demostrar cómo la aplicación web incumple flagrantemente estas políticas</strong> mediante la inspección técnica y la explotación (Auth Bypass).</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Política de Contraseñas -->
+        <div class="dash-card">
+            <h3 class="card-title mono">// POL-01: Complejidad de Contraseñas</h3>
+            <div class="activity-log">
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-1.1</span>
+                    <span>Las contraseñas deben tener una <strong>longitud mínima de 8 caracteres</strong>.</span>
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-1.2</span>
+                    <span>Deben incluir al menos una letra mayúscula, un número y un carácter especial.</span>
+                </div>
+                <div class="log-entry log-danger">
+                    <span class="log-level danger">INCUMPLIDO</span>
+                    <span>El sistema actual permite contraseñas vacías y cualquier carácter, ya que solo procesa el hash resultante en el lado del cliente.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Política de Almacenamiento -->
+        <div class="dash-card">
+            <h3 class="card-title mono">// POL-02: Almacenamiento Criptográfico</h3>
+            <div class="activity-log">
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-2.1</span>
+                    <span>Está estrictamente <strong>prohibido el uso de MD5 o SHA1</strong> para almacenar contraseñas debido a colisiones conocidas.</span>
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-2.2</span>
+                    <span>Toda contraseña debe almacenarse usando una función KDF fuerte (ej. bcrypt, Argon2) junto con un <strong>Salt aleatorio único</strong> por usuario.</span>
+                </div>
+                <div class="log-entry log-danger">
+                    <span class="log-level danger">INCUMPLIDO</span>
+                    <span>La API almacena hashes MD5 crudos sin Salt. Esto permite ataques de Rainbow Tables.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Política de Transmisión -->
+        <div class="dash-card">
+            <h3 class="card-title mono">// POL-03: Transmisión y Autenticación</h3>
+            <div class="activity-log">
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-3.1</span>
+                    <span>Toda autenticación debe transmitirse a través de un canal seguro cifrado (TLS/HTTPS).</span>
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-3.2</span>
+                    <span>El servidor debe validar la credencial original (secreto compartido), no un derivado computable públicamente por el cliente.</span>
+                </div>
+                <div class="log-entry log-danger">
+                    <span class="log-level danger">INCUMPLIDO</span>
+                    <span>El servidor acepta un hash como credencial directa ("Auth Bypass via Client-Side Hashing"), permitiendo la suplantación de identidad sin conocer la contraseña.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Privacidad de Datos -->
+        <div class="dash-card">
+            <h3 class="card-title mono">// POL-04: Privacidad de la Información</h3>
+            <div class="activity-log">
+                <div class="log-entry log-info">
+                    <span class="log-level info">REQ-4.1</span>
+                    <span>Las bases de datos de credenciales deben mantener el principio de mínimo privilegio.</span>
+                </div>
+                <div class="log-entry log-danger">
+                    <span class="log-level danger">INCUMPLIDO</span>
+                    <span>El endpoint público <code>/api/users</code> expone el 100% de los identificadores y hashes, violando gravemente la confidencialidad.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

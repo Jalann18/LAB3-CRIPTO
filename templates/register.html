@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Registro{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+
+        <!-- Panel izquierdo: Info de registro -->
+        <div class="auth-info-panel">
+            <div class="info-panel-header">
+                <span class="mono">// FLUJO DE REGISTRO</span>
+            </div>
+
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="fs-icon">👤</div>
+                    <div class="fs-text">
+                        <strong>Usuario escribe</strong>
+                        <code>mypassword</code>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓ JavaScript (cliente)</div>
+                <div class="flow-step flow-step-vuln">
+                    <div class="fs-icon">🔢</div>
+                    <div class="fs-text">
+                        <strong>Se genera MD5</strong>
+                        <code>MD5("mypassword")</code>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓ HTTP Request</div>
+                <div class="flow-step">
+                    <div class="fs-icon">📡</div>
+                    <div class="fs-text">
+                        <strong>Se envía al servidor</strong>
+                        <code>{ "password_hash": "..." }</code>
+                    </div>
+                </div>
+                <div class="flow-arrow">↓ Almacenamiento</div>
+                <div class="flow-step flow-step-danger">
+                    <div class="fs-icon">💾</div>
+                    <div class="fs-text">
+                        <strong>Se guarda en DB</strong>
+                        <code>MD5 crudo (sin salt)</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-alert info-alert-warning">
+                <h4>⚠️ ¿Por qué es inseguro?</h4>
+                <ul>
+                    <li>MD5 tiene colisiones conocidas</li>
+                    <li>Sin salt → rainbow tables funcionan</li>
+                    <li>MD5 de "password123" es siempre el mismo</li>
+                    <li>El hash viaja en texto plano (sin HTTPS)</li>
+                    <li>Un atacante puede reutilizar el hash directamente</li>
+                </ul>
+            </div>
+
+            <div class="info-alert info-alert-info">
+                <h4>✅ ¿Qué debería usarse?</h4>
+                <ul>
+                    <li><strong>bcrypt</strong> con salt aleatorio</li>
+                    <li><strong>Argon2</strong> (ganador PHC 2015)</li>
+                    <li><strong>scrypt</strong> con factor de trabajo alto</li>
+                    <li>Hash <strong>en el servidor</strong>, no en cliente</li>
+                    <li>Enviar contraseña por <strong>HTTPS</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Formulario de registro -->
+        <div class="auth-form-panel">
+            <div class="form-header">
+                <div class="form-icon">📝</div>
+                <h2 class="form-title">Crear Cuenta</h2>
+                <p class="form-subtitle">Observa cómo se hashea tu contraseña antes de enviarse</p>
+            </div>
+
+            <form id="register-form" class="auth-form" novalidate>
+                <div class="form-group">
+                    <label for="reg-username" class="form-label">Nombre de usuario</label>
+                    <input 
+                        type="text" 
+                        id="reg-username" 
+                        name="username"
+                        class="form-input" 
+                        placeholder="ej: estudiante01"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email" class="form-label">Email</label>
+                    <input 
+                        type="email" 
+                        id="reg-email" 
+                        name="email"
+                        class="form-input" 
+                        placeholder="ej: estudiante@universidad.edu"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password" class="form-label">
+                        Contraseña
+                        <span class="label-hint">(se hasheará con MD5 en tu navegador)</span>
+                    </label>
+                    <div class="input-with-toggle">
+                        <input 
+                            type="password" 
+                            id="reg-password" 
+                            name="password"
+                            class="form-input" 
+                            placeholder="Ingresa una contraseña"
+                            autocomplete="new-password"
+                            required
+                        >
+                        <button type="button" class="toggle-pass" onclick="togglePassword('reg-password', this)">👁</button>
+                    </div>
+                </div>
+
+                <!-- Visor del hash en tiempo real -->
+                <div class="hash-preview-box" id="hash-preview-box">
+                    <div class="hash-preview-label">
+                        <span class="mono">MD5 que se almacenará en la DB:</span>
+                        <span class="badge-live">LIVE</span>
+                    </div>
+                    <div class="hash-preview-value mono" id="reg-hash-preview">
+                        (escribe tu contraseña para ver el hash)
+                    </div>
+                    <div class="hash-algorithms-row">
+                        <div class="mini-hash">
+                            <span class="mini-algo">SHA1:</span>
+                            <span class="mono mini-val" id="reg-sha1-preview">—</span>
+                        </div>
+                        <div class="mini-hash">
+                            <span class="mini-algo">SHA256:</span>
+                            <span class="mono mini-val" id="reg-sha256-preview">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="btn-register">
+                    <span class="btn-text">Registrar Usuario</span>
+                    <span class="btn-loading hidden">⟳ Registrando...</span>
+                </button>
+            </form>
+
+            <!-- Respuesta del servidor -->
+            <div class="server-response hidden" id="register-response">
+                <div class="response-label mono">// Respuesta del servidor:</div>
+                <pre class="response-body" id="register-response-body"></pre>
+            </div>
+
+            <!-- Request HTTP enviado -->
+            <div class="request-display hidden" id="register-request-display">
+                <div class="request-label mono">// Request HTTP enviado:</div>
+                <pre class="request-body" id="register-request-body"></pre>
+            </div>
+
+            <div class="form-footer">
+                <a href="/login" class="form-link">¿Ya tienes cuenta? Inicia sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Mostrar hash en tiempo real mientras el usuario escribe
+    document.getElementById('reg-password').addEventListener('input', async function() {
+        const password = this.value;
+        const preview = document.getElementById('reg-hash-preview');
+        const sha1Preview = document.getElementById('reg-sha1-preview');
+        const sha256Preview = document.getElementById('reg-sha256-preview');
+        
+        if (password.length === 0) {
+            preview.textContent = '(escribe tu contraseña para ver el hash)';
+            preview.classList.remove('hash-ready');
+            sha1Preview.textContent = '—';
+            sha256Preview.textContent = '—';
+            return;
+        }
+        
+        // Calcular múltiples hashes para comparar
+        const [md5Hash, sha1Hash, sha256Hash] = await Promise.all([
+            md5(password),
+            sha1(password),
+            sha256(password)
+        ]);
+        
+        preview.textContent = md5Hash;
+        preview.classList.add('hash-ready');
+        sha1Preview.textContent = sha1Hash.substring(0, 20) + '...';
+        sha256Preview.textContent = sha256Hash.substring(0, 20) + '...';
+    });
+
+    // Manejar submit del formulario de registro
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('reg-username').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value;
+        
+        if (!username || !email || !password) {
+            showAlert('Por favor completa todos los campos', 'error');
+            return;
+        }
+
+        // ============================================================
+        // VULNERABILIDAD: Hasheamos en cliente y enviamos el hash
+        // El servidor almacenará este MD5 directamente
+        // ============================================================
+        const passwordHash = await md5(password);
+        
+        const requestData = {
+            username: username,
+            email: email,
+            password_hash: passwordHash  // Hash MD5 sin salt, generado en cliente
+        };
+
+        // Mostrar request que se va a enviar
+        document.getElementById('register-request-display').classList.remove('hidden');
+        document.getElementById('register-request-body').textContent = 
+            `POST /api/register HTTP/1.1\n` +
+            `Host: 127.0.0.1:5000\n` +
+            `Content-Type: application/json\n\n` +
+            JSON.stringify(requestData, null, 2);
+
+        setBtnLoading('btn-register', true);
+        
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            // Mostrar respuesta del servidor
+            document.getElementById('register-response').classList.remove('hidden');
+            document.getElementById('register-response-body').textContent = JSON.stringify(data, null, 2);
+            
+            if (data.success) {
+                showAlert(`✅ ${data.message}`, 'success');
+                this.reset();
+                document.getElementById('reg-hash-preview').textContent = '(escribe tu contraseña para ver el hash)';
+            } else {
+                showAlert(`❌ ${data.error}`, 'error');
+            }
+        } catch (err) {
+            showAlert('Error de conexión: ' + err.message, 'error');
+        } finally {
+            setBtnLoading('btn-register', false);
+        }
+    });
+</script>
+{% endblock %}

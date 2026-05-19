@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="dashboard-header">
+        <div class="dash-welcome">
+            <div class="dash-icon">🏆</div>
+            <div>
+                <h1 class="dash-title">¡Acceso Concedido!</h1>
+                <p class="dash-subtitle">Sesión activa para: <strong class="mono">{{ username }}</strong></p>
+            </div>
+        </div>
+        <button class="btn btn-danger" id="btn-logout" onclick="doLogout()">
+            Cerrar Sesión
+        </button>
+    </div>
+
+    <div class="success-banner">
+        <div class="success-icon">✅</div>
+        <div class="success-text">
+            <strong>ATAQUE EXITOSO (si llegaste aquí con Pass-the-Hash)</strong>
+            <p>Has demostrado que el sistema acepta hashes MD5 directamente sin verificar la contraseña original.</p>
+        </div>
+    </div>
+
+    <!-- Panel de info de sesión -->
+    <div class="dashboard-grid">
+        <div class="dash-card">
+            <h3 class="card-title mono">// Información de Sesión</h3>
+            <div class="session-info">
+                <div class="session-row">
+                    <span class="session-key">Usuario:</span>
+                    <span class="session-value mono">{{ username }}</span>
+                </div>
+                <div class="session-row">
+                    <span class="session-key">Timestamp:</span>
+                    <span class="session-value mono" id="session-time"></span>
+                </div>
+                <div class="session-row">
+                    <span class="session-key">IP Cliente:</span>
+                    <span class="session-value mono" id="client-ip">127.0.0.1</span>
+                </div>
+                <div class="session-row">
+                    <span class="session-key">User-Agent:</span>
+                    <span class="session-value mono" id="user-agent"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <h3 class="card-title mono">// Base de Datos de Usuarios</h3>
+            <p class="card-desc">En este sistema vulnerable, puedes ver todos los hashes almacenados:</p>
+            <div id="users-list" class="users-list">
+                <div class="loading-indicator">Cargando usuarios...</div>
+            </div>
+            <a href="/api/users" target="_blank" class="btn btn-secondary btn-sm">
+                Ver JSON raw →
+            </a>
+        </div>
+
+        <div class="dash-card">
+            <h3 class="card-title mono">// Herramienta Hash en Vivo</h3>
+            <div class="live-hash-tool">
+                <input type="text" id="tool-input" class="form-input" 
+                       placeholder="Ingresa texto para hashear..."
+                       oninput="liveHashTool(this.value)">
+                <div class="tool-results">
+                    <div class="tool-result-row">
+                        <span class="tr-algo md5">MD5</span>
+                        <span class="tr-hash mono" id="tool-md5">—</span>
+                    </div>
+                    <div class="tool-result-row">
+                        <span class="tr-algo sha1">SHA1</span>
+                        <span class="tr-hash mono" id="tool-sha1">—</span>
+                    </div>
+                    <div class="tool-result-row">
+                        <span class="tr-algo sha256">SHA256</span>
+                        <span class="tr-hash mono" id="tool-sha256">—</span>
+                    </div>
+                </div>
+                <div class="tool-note">
+                    💡 Usa esto para verificar hashes en el laboratorio
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-card card-full">
+            <h3 class="card-title mono">// Registro de Actividad (Simulado)</h3>
+            <div class="activity-log" id="activity-log">
+                <div class="log-entry log-success">
+                    <span class="log-time" id="log-time-1"></span>
+                    <span class="log-level success">SUCCESS</span>
+                    <span>Autenticación exitosa para usuario <strong>{{ username }}</strong></span>
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-time" id="log-time-2"></span>
+                    <span class="log-level info">INFO</span>
+                    <span>Algoritmo usado: MD5 (hash de 32 caracteres hex)</span>
+                </div>
+                <div class="log-entry log-warning">
+                    <span class="log-time" id="log-time-3"></span>
+                    <span class="log-level warning">WARNING</span>
+                    <span>⚠️ Hash verificado sin salt — vulnerable a Pass-the-Hash y rainbow tables</span>
+                </div>
+                <div class="log-entry log-danger">
+                    <span class="log-time" id="log-time-4"></span>
+                    <span class="log-level danger">CRITICAL</span>
+                    <span>🚨 MD5 es un algoritmo deprecado para almacenamiento de contraseñas (RFC 6151)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conclusiones de seguridad -->
+        <div class="dash-card card-full conclusions-card">
+            <h3 class="card-title mono">// Conclusiones de Seguridad del Laboratorio</h3>
+            <div class="conclusions-grid">
+                <div class="conclusion-item c-red">
+                    <h4>❌ MD5 para Contraseñas</h4>
+                    <p>MD5 fue diseñado para velocidad (checksums), no para seguridad. Genera 2^128 posibilidades pero con hardware moderno se pueden calcular <strong>10 billones de hashes/segundo</strong>. Rainbow tables precomputadas cubren la mayoría de contraseñas comunes.</p>
+                </div>
+                <div class="conclusion-item c-red">
+                    <h4>❌ Hashing en Cliente ("Auth Bypass")</h4>
+                    <p>Si el hash se genera en el cliente, el hash <strong>ES la contraseña</strong>. Técnicamente, esto se conoce como <em>Auth Bypass via Client-Side Hashing</em>. En el laboratorio lo llamamos análogamente <strong>Pass-the-Hash</strong> porque la explotación es idéntica: quien captura el hash, puede enviarlo directamente como credencial sin conocer el texto original (a diferencia del PtH puro en entornos Windows/NTLM, pero el concepto de reutilización es el mismo).</p>
+                </div>
+                <div class="conclusion-item c-red">
+                    <h4>❌ Sin Salt</h4>
+                    <p>Sin salt, dos usuarios con la misma contraseña tienen el mismo hash. Esto permite ataques de correlación: si crackeas un hash, automáticamente crackeas todos los que tengan el mismo.</p>
+                </div>
+                <div class="conclusion-item c-green">
+                    <h4>✅ Solución Correcta</h4>
+                    <p>Usar <strong>bcrypt, scrypt o Argon2</strong> en el servidor con salt aleatorio por usuario. Enviar la contraseña en texto plano por <strong>HTTPS/TLS</strong> (el canal cifrado protege el tránsito).</p>
+                </div>
+                <div class="conclusion-item c-green">
+                    <h4>✅ bcrypt en Práctica</h4>
+                    <code class="code-block">import bcrypt
+hash = bcrypt.hashpw(
+    password.encode(),
+    bcrypt.gensalt(rounds=12)
+)
+# Verifica automáticamente el salt embebido
+bcrypt.checkpw(password.encode(), hash)</code>
+                </div>
+                <div class="conclusion-item c-blue">
+                    <h4>📊 Comparativa de Algoritmos</h4>
+                    <table class="mini-table">
+                        <tr><th>Algoritmo</th><th>Para passwords</th><th>Salt</th><th>Velocidad</th></tr>
+                        <tr><td>MD5</td><td class="no">❌ NO</td><td class="no">❌ No</td><td class="bad">Muy rápido</td></tr>
+                        <tr><td>SHA1</td><td class="no">❌ NO</td><td class="no">❌ No</td><td class="bad">Muy rápido</td></tr>
+                        <tr><td>SHA256</td><td class="no">❌ NO</td><td class="no">❌ No</td><td class="bad">Rápido</td></tr>
+                        <tr><td>bcrypt</td><td class="yes">✅ SÍ</td><td class="yes">✅ Automático</td><td class="good">Lento (configurable)</td></tr>
+                        <tr><td>Argon2</td><td class="yes">✅ SÍ</td><td class="yes">✅ Automático</td><td class="good">Muy lento (configurable)</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Llenar datos de sesión
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        document.getElementById('session-time').textContent = now.toISOString();
+        document.getElementById('user-agent').textContent = navigator.userAgent.substring(0, 50) + '...';
+        
+        // Llenar timestamps del log
+        const t = now.toLocaleTimeString();
+        ['log-time-1','log-time-2','log-time-3','log-time-4'].forEach((id, i) => {
+            const d = new Date(now - (i * 2000));
+            document.getElementById(id).textContent = d.toLocaleTimeString();
+        });
+        
+        // Cargar usuarios de la "DB"
+        loadUsers();
+    });
+
+    // Cargar lista de usuarios con sus hashes
+    async function loadUsers() {
+        try {
+            const resp = await fetch('/api/users');
+            const data = await resp.json();
+            const container = document.getElementById('users-list');
+            container.innerHTML = '';
+            
+            for (const [username, user] of Object.entries(data.users)) {
+                const div = document.createElement('div');
+                div.className = 'user-hash-row';
+                div.innerHTML = `
+                    <span class="uh-user mono">${user.username}</span>
+                    <span class="uh-hash mono">${user.password_hash}</span>
+                    <span class="uh-role">${user.role}</span>
+                `;
+                container.appendChild(div);
+            }
+        } catch (e) {
+            document.getElementById('users-list').textContent = 'Error cargando usuarios';
+        }
+    }
+
+    // Herramienta de hash en vivo
+    async function liveHashTool(text) {
+        if (!text) {
+            ['tool-md5','tool-sha1','tool-sha256'].forEach(id => {
+                document.getElementById(id).textContent = '—';
+            });
+            return;
+        }
+        const [m, s1, s256] = await Promise.all([md5(text), sha1(text), sha256(text)]);
+        document.getElementById('tool-md5').textContent = m;
+        document.getElementById('tool-sha1').textContent = s1;
+        document.getElementById('tool-sha256').textContent = s256;
+    }
+
+    // Logout
+    async function doLogout() {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/';
+    }
+</script>
+{% endblock %}
